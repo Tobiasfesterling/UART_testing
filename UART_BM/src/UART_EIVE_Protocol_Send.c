@@ -151,7 +151,7 @@ int connect_(uint8_t ID, uint8_t *databytes, uint8_t dataLength, uint8_t *lastCR
 				acknowledge = ACK;
 
 				//wird in check_crc übernommen
-				*lastCRC_rcvd = submittedCRC; //Test
+				//*lastCRC_rcvd = submittedCRC; //Test
 			}
 		}
 
@@ -172,6 +172,7 @@ int connect_(uint8_t ID, uint8_t *databytes, uint8_t dataLength, uint8_t *lastCR
 				{
 					//send_data();
 					connection = ACK;
+					*lastCRC_rcvd = submittedCRC; //Test
 				}
 				else
 				{
@@ -339,7 +340,7 @@ int send_data(uint8_t ID, uint8_t *databytes, int dataLength, uint8_t *lastCRC_s
 		//Calculate CRC value
 		int crc = calc_crc8(send_array, *lastCRC_send);
 
-		send_array[CRC_POS] = crc; //Kann auf nach positiven ACK-Flag verschoben werden
+		send_array[CRC_POS] = crc;
 
 		printf("after crc in while\n");
 		//Send package -> Network now
@@ -365,7 +366,7 @@ int send_data(uint8_t ID, uint8_t *databytes, int dataLength, uint8_t *lastCRC_s
 			if(succes == 1)
 			{
 				printf("SendArray\n");
-				wait_on_answer(send_array, send_array[ID_POS], &send_array[CRC_POS]);
+				wait_on_answer(send_array, send_array[ID_POS], &send_array[CRC_POS], NULL);
 			}
 			else
 			{
@@ -405,6 +406,7 @@ int send_data(uint8_t ID, uint8_t *databytes, int dataLength, uint8_t *lastCRC_s
 
 		printf("get last crc sent \n");
 		*lastCRC_send = send_array[CRC_POS];
+
 		package_counter++;
 	}
 
@@ -431,7 +433,7 @@ int wait_on_answer(uint8_t *send_array, uint8_t ID, uint8_t *lastCRC_send)
 
 	if(NULL == send_array)
 	{
-		fill_header_for_empty_data(nack_header, ID, UNSET_ALL_FLAGS, lastCRC_send);
+		*lastCRC_send = fill_header_for_empty_data(nack_header, ID, UNSET_ALL_FLAGS, lastCRC_send);
 	}
 
 	int status = XST_NO_DATA;
@@ -621,7 +623,7 @@ void fill_packages(uint8_t ID, int dataLength, uint8_t *databytes, uint8_t *temp
  *
  * This method fills the header of empty packages which are going to be send
  */
-void fill_header_for_empty_data(uint8_t *header, uint8_t ID, uint8_t flags, uint8_t *lastCRC_send)
+uint8_t fill_header_for_empty_data(uint8_t *header, uint8_t ID, uint8_t flags, uint8_t *lastCRC_send)
 {
 	printf("fill header for empty dataaa\n");
 	uint8_t temp_array_CRC[BUFFER_SIZE] = {0};
@@ -633,12 +635,14 @@ void fill_header_for_empty_data(uint8_t *header, uint8_t ID, uint8_t flags, uint
 	uint8_t newCRC = calc_crc8(temp_array_CRC, *lastCRC_send);
 
 	/*save new CRC value in old variable*/
-	(*lastCRC_send) = newCRC;
+	//(*lastCRC_send) = newCRC;
 
 	/*fill header*/
 	header[ID_POS] = ID;
 	header[CRC_POS] = newCRC;
 	header[DATA_SIZE_POS] = EMPTY_DATA_LENGTH;
 	header[FLAGS_POS] = flags;
+
+	return newCRC;
 }
 
