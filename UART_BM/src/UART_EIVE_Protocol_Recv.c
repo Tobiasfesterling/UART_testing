@@ -72,15 +72,18 @@ int receive()
 	/* variable to store the last sent CRC value for calculating next CRC */
 	uint8_t last_crc_rcv = 0x00;
 
+	/*variable to store the calculated crc value */
+	uint8_t calc_crc = INIT_CRC;
+
 	//printf("connection establishment\n");
-	status = connection_establishment(&last_crc_rcv, &last_crc_send, &new_flags, &conn_id);
+	status = connection_establishment(&last_crc_rcv, &last_crc_send, &new_flags, &conn_id, *calc_crc);
 
 	if(status == XST_FAILURE)
 		return XST_FAILURE;
 
 	//receive the tm/tc
 	printf("receive data\n");
-	status = receive_data(&last_crc_rcv, &last_crc_send, conn_id, new_flags);
+	status = receive_data(&last_crc_rcv, &last_crc_send, conn_id, new_flags, *calc_crc);
 
 	if(status == XST_FAILURE)
 		return XST_FAILURE;
@@ -98,7 +101,7 @@ int receive()
  * @return: XST_SUCCESS if the receiving was correct.
  * 			XST_FAILURE if an error occurs.
  */
-int connection_establishment(uint8_t *last_crc_rcv, uint8_t *last_crc_send, uint8_t *new_flags, uint8_t *conn_id)
+int connection_establishment(uint8_t *last_crc_rcv, uint8_t *last_crc_send, uint8_t *new_flags, uint8_t *conn_id, uint8_t *calc_crc)
 {
 	printf("Connection establishment...\n");
 	/* variable for header of the first received package */
@@ -107,7 +110,6 @@ int connection_establishment(uint8_t *last_crc_rcv, uint8_t *last_crc_send, uint
 	/* variable for the received data from the package */
 	uint8_t data[PACKAGE_DATA_SIZE] = {0};
 
-	uint8_t calc_crc = INIT_CRC;
 
 	//extract header from buffer
 	extract_header(RecvBuffer, header, data);
@@ -121,7 +123,7 @@ int connection_establishment(uint8_t *last_crc_rcv, uint8_t *last_crc_send, uint
 	if(check_crc(header[CRC_POS], RecvBuffer, INIT_CRC) != XST_SUCCESS)
 	{
 		//Send answer without set ACK flag
-		send_failure(last_crc_send, header[ID_POS], *calc_crc);
+		send_failure(last_crc_send, header[ID_POS], calc_crc);
 		printf("crc NACK, failure\n");
 
 		return XST_FAILURE;
@@ -135,7 +137,7 @@ int connection_establishment(uint8_t *last_crc_rcv, uint8_t *last_crc_send, uint
 	if(get_Req_to_send_flag(header[FLAGS_POS]) == 0)
 	{
 		//Send answer without set ACK flag
-		send_failure(last_crc_send, header[ID_POS], *calc_crc);
+		send_failure(last_crc_send, header[ID_POS], calc_crc);
 		printf("req 2 send flag not received, failure\n");
 
 		return XST_FAILURE;
@@ -148,7 +150,7 @@ int connection_establishment(uint8_t *last_crc_rcv, uint8_t *last_crc_send, uint
 	int status;
 
 	*last_crc_rcv = header[CRC_POS];
-	status = send_success(last_crc_send, *conn_id, *new_flags, *calc_crc);
+	status = send_success(last_crc_send, *conn_id, *new_flags, calc_crc);
 	printf("send success\n");
 
 	return status;
@@ -162,7 +164,7 @@ int connection_establishment(uint8_t *last_crc_rcv, uint8_t *last_crc_send, uint
  * 		   rcvd_id: the message-id in the header
  * 		   last_sent_flags: the last sent flags
  */
-int receive_data(uint8_t *crc_rcv, uint8_t *crc_send, uint8_t rcvd_id, uint8_t last_sent_flags)
+int receive_data(uint8_t *crc_rcv, uint8_t *crc_send, uint8_t rcvd_id, uint8_t last_sent_flags, uint8_t *calc_crc)
 {
 	printf("receive data...\n");
 	/* Variable for next received header */
@@ -182,8 +184,6 @@ int receive_data(uint8_t *crc_rcv, uint8_t *crc_send, uint8_t rcvd_id, uint8_t l
 	uint8_t last_crc_send = *crc_send;
 	printf("LastCRC_SEND: %i\n", last_crc_send);
 
-	/* variable to store the calculated crc */
-	uint8_t calc_crc = INIT_CRC;
 
 	/* variable for paketsize */
 	int datacounter = 0;
@@ -229,13 +229,13 @@ int receive_data(uint8_t *crc_rcv, uint8_t *crc_send, uint8_t rcvd_id, uint8_t l
 				{
 					printf("success receiving data\n");
 					// success == 1 -> send success
-					send_success(&last_crc_send, rcvd_id, flags_to_send, *calc_crc);
+					send_success(&last_crc_send, rcvd_id, flags_to_send, calc_crc);
 				}
 				else
 				{
 					printf("failure receving data\n");
 					//success == 0 -> send failure
-					send_failure(&last_crc_send, next_header[ID_POS], *calc_crc);
+					send_failure(&last_crc_send, next_header[ID_POS], calc_crc);
 				}
 
 			}
@@ -300,7 +300,7 @@ int receive_data(uint8_t *crc_rcv, uint8_t *crc_send, uint8_t rcvd_id, uint8_t l
 		}
 
 		//store new crc in last_crc_send
-		last_crc_send = calc_crc;
+		last_crc_send = *calc_crc;
 
 		//store the last received CRC value for next calculating
 		last_crc_rcv = next_header[CRC_POS];
