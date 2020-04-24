@@ -315,6 +315,7 @@ int send_data(uint8_t ID, uint8_t *databytes, int dataLength, uint8_t *lastCRC_s
 	uint8_t flags;
 	uint8_t submittedCRC;
 	uint8_t temp[BUFFER_SIZE * packageCount];
+	int crc = 0;
 	int status = XST_SUCCESS;
 
 	printf("fill packages\n");
@@ -338,7 +339,7 @@ int send_data(uint8_t ID, uint8_t *databytes, int dataLength, uint8_t *lastCRC_s
 		printf("before crc in while\n");
 		printf("Next crc calc: Initval -> Last_CRC_send: %i\n", *lastCRC_send);
 		//Calculate CRC value
-		int crc = calc_crc8(send_array, *lastCRC_send);
+		crc = calc_crc8(send_array, *lastCRC_send);
 
 		send_array[CRC_POS] = crc;
 
@@ -366,7 +367,7 @@ int send_data(uint8_t ID, uint8_t *databytes, int dataLength, uint8_t *lastCRC_s
 			if(succes == 1)
 			{
 				printf("SendArray\n");
-				wait_on_answer(send_array, send_array[ID_POS], &send_array[CRC_POS], NULL);
+				wait_on_answer(send_array, send_array[ID_POS], &send_array[CRC_POS]);
 			}
 			else
 			{
@@ -382,7 +383,7 @@ int send_data(uint8_t ID, uint8_t *databytes, int dataLength, uint8_t *lastCRC_s
 			//check received CRC
 			if(check_crc(submittedCRC, RecvBuffer, *lastCRC_rcvd)!= XST_SUCCESS)
 			{
-				send_failure(lastCRC_send, ID);
+				send_failure(lastCRC_send, ID, &crc);
 				succes = 0;
 			}
 			else
