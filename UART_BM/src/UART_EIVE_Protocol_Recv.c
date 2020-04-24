@@ -76,14 +76,14 @@ int receive()
 	uint8_t calc_crc = INIT_CRC;
 
 	//printf("connection establishment\n");
-	status = connection_establishment(&last_crc_rcv, &last_crc_send, &new_flags, &conn_id, *calc_crc);
+	status = connection_establishment(&last_crc_rcv, &last_crc_send, &new_flags, &conn_id, &calc_crc);
 
 	if(status == XST_FAILURE)
 		return XST_FAILURE;
 
 	//receive the tm/tc
 	printf("receive data\n");
-	status = receive_data(&last_crc_rcv, &last_crc_send, conn_id, new_flags, *calc_crc);
+	status = receive_data(&last_crc_rcv, &last_crc_send, conn_id, new_flags, &calc_crc);
 
 	if(status == XST_FAILURE)
 		return XST_FAILURE;
@@ -318,7 +318,7 @@ int receive_data(uint8_t *crc_rcv, uint8_t *crc_send, uint8_t rcvd_id, uint8_t l
 		{
 			printf("last package\n");
 			end = 1;
-			send_success(&last_crc_send, rcvd_id, flags_to_send);
+			send_success(&last_crc_send, rcvd_id, flags_to_send, calc_crc);
 		}
 
 		//reset timer

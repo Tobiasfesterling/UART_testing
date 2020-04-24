@@ -193,7 +193,7 @@ void fill_packages(uint8_t ID, int dataLength, uint8_t *databytes, uint8_t *temp
  *
  * This method fills the header of empty packages which are going to be send
  */
-void fill_header_for_empty_data(uint8_t *header, uint8_t ID, uint8_t flags, uint8_t *lastCRC_send);
+uint8_t fill_header_for_empty_data(uint8_t *header, uint8_t ID, uint8_t flags, uint8_t *lastCRC_send);
 
 /******************** Functions to receive ********************/
 
@@ -229,7 +229,7 @@ int receive();
  * @return: XST_SUCCESS if the receiving was correct.
  * 			XST_FAILURE if an error occurs.
  */
-int connection_establishment(uint8_t *last_crc_send, uint8_t *new_flags, uint8_t *conn_id);
+int connection_establishment(uint8_t *last_crc_rcv, uint8_t *last_crc_send, uint8_t *new_flags, uint8_t *conn_id, uint8_t *calc_crc);
 
 /*
  * With this method data will be received from the connected sender.
@@ -239,7 +239,7 @@ int connection_establishment(uint8_t *last_crc_send, uint8_t *new_flags, uint8_t
  * 		   rcvd_id: the message-id in the header
  * 		   last_sent_flags: the last sent flags
  */
-int receive_data(uint8_t *crc_rcv, uint8_t *crc_send, uint8_t rcvd_id, uint8_t last_sent_flags);
+int receive_data(uint8_t *crc_rcv, uint8_t *crc_send, uint8_t rcvd_id, uint8_t last_sent_flags, uint8_t *calc_crc);
 
 /*
  * This method splits the received data into header and payload data.
@@ -259,7 +259,7 @@ int extract_header(const uint8_t *rcvBuffer, uint8_t *header, uint8_t *data);
  *
  * @return: The success or failure of sending the answer
  */
-int send_failure(uint8_t *last_crc, uint8_t old_id);
+int send_failure(uint8_t *last_crc, uint8_t old_id, uint8_t *calc_crc);
 
 /*
  * Sends an answer with set ACK flag and the wanted flags
@@ -270,7 +270,7 @@ int send_failure(uint8_t *last_crc, uint8_t old_id);
  *
  * @return: The success or failure of sending the answer
  */
-int send_success(uint8_t *last_crc, uint8_t id, uint8_t flags);
+int send_success(uint8_t *last_crc, uint8_t id, uint8_t flags, uint8_t *calc_crc);
 
 /*
  * Sends the answer package with empty data
