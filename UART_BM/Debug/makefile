@@ -23,19 +23,19 @@ endif
 # Add inputs and outputs from these tool invocations to the build variables 
 
 # All Target
-all: UART_BM_old
+all: UART_BM
 
 # Tool invocations
-UART_BM_old: $(OBJS) $(USER_OBJS)
+UART_BM: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: MacOS X C Linker'
-	gcc  -o "UART_BM_old" $(OBJS) $(USER_OBJS) $(LIBS)
+	gcc  -o "UART_BM" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) $(EXECUTABLES)$(OBJS)$(C_DEPS) UART_BM_old
+	-$(RM) $(EXECUTABLES)$(OBJS)$(C_DEPS) UART_BM
 	-@echo ' '
 
 .PHONY: all clean dependents
