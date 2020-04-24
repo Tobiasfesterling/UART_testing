@@ -26,7 +26,7 @@ int UART_Recv_Data()
 	//Check the receive buffer if data is available ->Network now
 	//status = UART_Recv_Buffer();
 	if((status = recv(sock, RecvBuffer, BUFFER_SIZE, 0)) < 0)
-		//puts("ERROR UARTRecvData");
+		puts("ERROR UARTRecvData");
 
 	//if data available continue, else return
 	//if(status != XST_SUCCESS)
@@ -58,6 +58,7 @@ int UART_Recv_Data()
  */
 int receive()
 {
+	printf("receive data...\n");
 	int status = XST_SUCCESS;
 
 	/* variable for the new flags which will be set */
@@ -71,12 +72,14 @@ int receive()
 	/* variable to store the last sent CRC value for calculating next CRC */
 	uint8_t last_crc_rcv = 0x00;
 
-	status = connection_establishment(&last_crc_rcv, &new_flags, &conn_id);
+	//printf("connection establishment\n");
+	status = connection_establishment(&last_crc_rcv, &last_crc_send, &new_flags, &conn_id);
 
 	if(status == XST_FAILURE)
 		return XST_FAILURE;
 
 	//receive the tm/tc
+	printf("receive data\n");
 	status = receive_data(&last_crc_rcv, &last_crc_send, conn_id, new_flags);
 
 	if(status == XST_FAILURE)
@@ -95,28 +98,35 @@ int receive()
  * @return: XST_SUCCESS if the receiving was correct.
  * 			XST_FAILURE if an error occurs.
  */
-int connection_establishment(uint8_t *last_crc_send, uint8_t *new_flags, uint8_t *conn_id)
+int connection_establishment(uint8_t *last_crc_rcv, uint8_t *last_crc_send, uint8_t *new_flags, uint8_t *conn_id)
 {
+	printf("Connection establishment...\n");
 	/* variable for header of the first received package */
-	uint8_t header[HEADER_SIZE];
+	uint8_t header[HEADER_SIZE] = {0};
 
 	/* variable for the received data from the package */
-	uint8_t data[PACKAGE_DATA_SIZE];
+	uint8_t data[PACKAGE_DATA_SIZE] = {0};
+
+	uint8_t calc_crc = INIT_CRC;
 
 	//extract header from buffer
 	extract_header(RecvBuffer, header, data);
+	printf("extracted header successfully\n");
 
 	//
 	*conn_id = header[ID_POS];
 
 	/* crc_check */
+	printf("CRC Check -> Initval crc 0x00 (connection establishment)\n");
 	if(check_crc(header[CRC_POS], RecvBuffer, INIT_CRC) != XST_SUCCESS)
 	{
 		//Send answer without set ACK flag
-		send_failure(last_crc_send, header[ID_POS]);
+		send_failure(last_crc_send, header[ID_POS], *calc_crc);
+		printf("crc NACK, failure\n");
 
 		return XST_FAILURE;
 	}
+	printf("crc ACK, success\n");
 
 	//set acknowledge flag
 	set_ACK_Flag(new_flags, ACK);
@@ -125,17 +135,21 @@ int connection_establishment(uint8_t *last_crc_send, uint8_t *new_flags, uint8_t
 	if(get_Req_to_send_flag(header[FLAGS_POS]) == 0)
 	{
 		//Send answer without set ACK flag
-		send_failure(last_crc_send, header[ID_POS]);
+		send_failure(last_crc_send, header[ID_POS], *calc_crc);
+		printf("req 2 send flag not received, failure\n");
 
 		return XST_FAILURE;
 	}
 
+	printf("req 2 send received, success\n");
 	//set the ready_to_receive flag
 	set_Rdy_to_rcv_Flag(new_flags, 1);
 
 	int status;
 
-	status = send_success(last_crc_send, *conn_id, *new_flags);
+	*last_crc_rcv = header[CRC_POS];
+	status = send_success(last_crc_send, *conn_id, *new_flags, *calc_crc);
+	printf("send success\n");
 
 	return status;
 }
@@ -150,6 +164,7 @@ int connection_establishment(uint8_t *last_crc_send, uint8_t *new_flags, uint8_t
  */
 int receive_data(uint8_t *crc_rcv, uint8_t *crc_send, uint8_t rcvd_id, uint8_t last_sent_flags)
 {
+	printf("receive data...\n");
 	/* Variable for next received header */
 	uint8_t next_header[4];
 
@@ -161,12 +176,20 @@ int receive_data(uint8_t *crc_rcv, uint8_t *crc_send, uint8_t rcvd_id, uint8_t l
 
 	/* variable for last received CRC value */
 	uint8_t last_crc_rcv = *crc_rcv;
+	printf("LastCRC_RCV: %i\n", last_crc_rcv);
 
 	/* variable for last sended CRC value */
 	uint8_t last_crc_send = *crc_send;
+	printf("LastCRC_SEND: %i\n", last_crc_send);
+
+	/* variable to store the calculated crc */
+	uint8_t calc_crc = INIT_CRC;
 
 	/* variable for paketsize */
 	int datacounter = 0;
+
+	/* variable for counting package */
+	int pkgCounter = 0;
 
 	/* variable for loop */
 	uint8_t end = 0;
@@ -184,24 +207,37 @@ int receive_data(uint8_t *crc_rcv, uint8_t *crc_send, uint8_t rcvd_id, uint8_t l
 	 *
 	 * loop for receiving long data until end_flag is set
 	 */
+
 	while(end != SET)
 	{
+		printf("data still available\n");
 		//Receiving answer
 		while(status == XST_NO_DATA)
 		{
+			printf("Timer: %i\n", timer);
 			//timeout for receiving, reset timer for new sending
 			if(timer == MAX_TIMER)
+			{
 				timer = 0;
+				printf("timeout for receiving data\n");
+			}
 
 			// -> Send answer and wait for data
 			if(timer == 0)
 			{
 				if(success == SET)
+				{
+					printf("success receiving data\n");
 					// success == 1 -> send success
-					send_success(&last_crc_send, rcvd_id, flags_to_send);
+					send_success(&last_crc_send, rcvd_id, flags_to_send, *calc_crc);
+				}
 				else
+				{
+					printf("failure receving data\n");
 					//success == 0 -> send failure
-					send_failure(&last_crc_send, next_header[ID_POS]);
+					send_failure(&last_crc_send, next_header[ID_POS], *calc_crc);
+				}
+
 			}
 
 			//increase timer
@@ -212,11 +248,16 @@ int receive_data(uint8_t *crc_rcv, uint8_t *crc_send, uint8_t rcvd_id, uint8_t l
 			if(recv(sock, RecvBuffer, BUFFER_SIZE, 0) < 0)
 				puts("ERROR RecvAnswer");
 
+
 			status = XST_SUCCESS; //Test
+
+			printf("Received!");
 			//check status of receiving
-			if(status != XST_NO_DATA || status != XST_SUCCESS)
+			if(status != XST_NO_DATA && status != XST_SUCCESS)
 				return XST_FAILURE;
 		}
+
+		printf("data received\n");
 
 		//reset flags
 		flags_to_send = 0x00;
@@ -225,14 +266,17 @@ int receive_data(uint8_t *crc_rcv, uint8_t *crc_send, uint8_t rcvd_id, uint8_t l
 		extract_header(RecvBuffer, next_header, new_data);
 
 		//CRC check
+		printf("CRC Check -> Initval crc (last CRC received): %i\n", last_crc_rcv);
 		if(check_crc(next_header[CRC_POS], RecvBuffer, last_crc_rcv) != XST_SUCCESS)
 		{
+			printf("failure by received crc\n");
 			//failure
 			success = 0;
 			timer = 0;
 			status = XST_NO_DATA;
 			//send_failure(&last_crc_send, &next_header[ID_POS]);
 			continue;
+			//return XST_FAILURE; //test
 		}
 
 		//
@@ -248,24 +292,34 @@ int receive_data(uint8_t *crc_rcv, uint8_t *crc_send, uint8_t rcvd_id, uint8_t l
 		 */
 		if(get_ACK_flag(next_header[FLAGS_POS]) != ACK)
 		{
+			printf("failure by received ack flag\n");
 			//failure
 			timer = 0;
 			status = XST_NO_DATA;
 			continue;
 		}
 
+		//store new crc in last_crc_send
+		last_crc_send = calc_crc;
+
 		//store the last received CRC value for next calculating
 		last_crc_rcv = next_header[CRC_POS];
 
-		//check if this package was the last data package
-		if(get_end_flag(next_header[FLAGS_POS]) == 1)
-			end = 1;
-
 		//data buffer
 		for(int bytes = 0; bytes < next_header[DATA_SIZE_POS]; bytes++)
-			databuffer[datacounter * PACKAGE_DATA_SIZE + bytes] = new_data[bytes];
+			databuffer[pkgCounter * PACKAGE_DATA_SIZE + bytes] = new_data[bytes];
 
 		datacounter += next_header[DATA_SIZE_POS];
+		pkgCounter++;
+
+
+		//check if this package was the last data package
+		if(get_end_flag(next_header[FLAGS_POS]) == 1)
+		{
+			printf("last package\n");
+			end = 1;
+			send_success(&last_crc_send, rcvd_id, flags_to_send);
+		}
 
 		//reset timer
 		timer = 0;
@@ -282,6 +336,7 @@ int receive_data(uint8_t *crc_rcv, uint8_t *crc_send, uint8_t rcvd_id, uint8_t l
 
 	//data array with exact length
 	uint8_t data[datacounter];
+	printf("DataCounter: %i\n", datacounter);
 
 	//fill data array
 	for(int byte = 0; byte < datacounter; byte++)
@@ -313,9 +368,12 @@ int receive_data(uint8_t *crc_rcv, uint8_t *crc_send, uint8_t rcvd_id, uint8_t l
  */
 int extract_header(const uint8_t *rcvBuffer, uint8_t *header, uint8_t *data)
 {
+	printf("extract header...\n");
+	printf("fill header array with received header\n");
 	for(int header_pos = 0; header_pos < HEADER_SIZE; header_pos++)
 		header[header_pos] = rcvBuffer[header_pos];
 
+	printf("fill *data array with received data\n");
 	for(int data_byte = HEADER_SIZE; data_byte < BUFFER_SIZE; data_byte++)
 		data[data_byte - HEADER_SIZE] = rcvBuffer[data_byte];
 
@@ -330,10 +388,12 @@ int extract_header(const uint8_t *rcvBuffer, uint8_t *header, uint8_t *data)
  *
  * @return: The success or failure of sending the answer
  */
-int send_failure(uint8_t *last_crc, uint8_t old_id)
+int send_failure(uint8_t *last_crc, uint8_t old_id, uint8_t *calc_crc)
 {
+	printf("sending failure...\n");
 	//all flags are set to zero
 	uint8_t failure_flags = UNSET_ALL_FLAGS;
+	printf("unset all flags\n");
 
 	//header array
 	uint8_t header[HEADER_SIZE];
@@ -343,12 +403,14 @@ int send_failure(uint8_t *last_crc, uint8_t old_id)
 	set_ACK_Flag(&failure_flags, NACK);
 
 	//fill the header for the package to send
-	fill_header_for_empty_data(header, old_id, failure_flags, last_crc);
+	*calc_crc = fill_header_for_empty_data(header, old_id, failure_flags, last_crc);
+	printf("success filling header for empty data\n");
 
-	printf("send failure");
 	//send answer package
+	printf("UART answer\n");
 	int status = UART_answer(header);
 
+	printf("sent failure\n");
 	return status;
 }
 
@@ -361,17 +423,21 @@ int send_failure(uint8_t *last_crc, uint8_t old_id)
  *
  * @return: The success or failure of sending the answer
  */
-int send_success(uint8_t *last_crc, uint8_t id, uint8_t flags)
+int send_success(uint8_t *last_crc, uint8_t id, uint8_t flags, uint8_t *calc_crc)
 {
+	printf("sending success...\n");
 	//header array
 	uint8_t header[HEADER_SIZE];
 
 	//fill the header for the package to send
-	fill_header_for_empty_data(header, id, flags, last_crc);
+	*calc_crc = fill_header_for_empty_data(header, id, flags, last_crc);
+	printf("success filling header for empty data\n");
 
 	//send answer package
+	printf("send answer package\n");
 	int status = UART_answer(header);
 
+	printf("sent success\n");
 	return status;
 
 }
@@ -385,14 +451,18 @@ int send_success(uint8_t *last_crc, uint8_t id, uint8_t flags)
  */
 int UART_answer(uint8_t *header)
 {
+	printf("UART answer...\n");
 	uint8_t temp[BUFFER_SIZE] = {header[ID_POS], header[CRC_POS], header[DATA_SIZE_POS], header[FLAGS_POS]};
 
 	//-> Network now
 	//UART_Send(temp, 1);
+	printf("send answer\n");
 	if(send(sock, temp, BUFFER_SIZE, 0) != BUFFER_SIZE)
 		puts("ERROR UARTAnswer");
 
+	printf("success sending answer\n");
 	return XST_SUCCESS;
+
 }
 
 /*
@@ -413,8 +483,9 @@ int recv_TC(uint8_t *header, uint8_t *databytes)
 	{
 		case CAMERA_TC: break;
 		case UART_TC: 	puts("DONE!");
-						for(int i = 0; i < 28; i ++)
-							printf("%i", databytes[i]);
+						puts((char*) databytes);
+						//for(int i = 0; i < 28; i ++)
+							//printf("%c", databytes[i]);
 						break;
 		case CPU_TC: break;
 		case BRAM_TC: break;
