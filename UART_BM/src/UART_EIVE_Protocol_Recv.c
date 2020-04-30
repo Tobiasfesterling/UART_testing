@@ -9,6 +9,8 @@
 #include "UART_EIVE_Protocol.h"
 //#include "UART_io.h"
 #include "CRC.h"
+#include "string.h"
+#include "stdio.h"
 
 /*
  * Receive data if its available.
@@ -305,12 +307,18 @@ int receive_data(uint8_t *crc_rcv, uint8_t *crc_send, uint8_t rcvd_id, uint8_t l
 		//store the last received CRC value for next calculating
 		last_crc_rcv = next_header[CRC_POS];
 
+		printf("---------------------> Received chars in this package: '");
 		//data buffer
 		for(int bytes = 0; bytes < next_header[DATA_SIZE_POS]; bytes++)
+		{
+			printf("%c", new_data[bytes]);
 			databuffer[pkgCounter * PACKAGE_DATA_SIZE + bytes] = new_data[bytes];
+		}
 
 		datacounter += next_header[DATA_SIZE_POS];
 		pkgCounter++;
+
+		printf("'\nDATA SIZE IN THIS PACKAGE: %i <-> %i\n", (int) (sizeof(new_data)/sizeof(new_data[0])), next_header[DATA_SIZE_POS]);
 
 
 		//check if this package was the last data package
@@ -342,11 +350,12 @@ int receive_data(uint8_t *crc_rcv, uint8_t *crc_send, uint8_t rcvd_id, uint8_t l
 	for(int byte = 0; byte < datacounter; byte++)
 		data[byte] = databuffer[byte];
 
+	int size_of_data = (int) (sizeof(data) / sizeof(data[0]));
 	//
 	switch(id)
 	{
 		//received data is tc
-		case TC_MASK:	recv_TC(next_header, data); break;
+		case TC_MASK:	recv_TC(next_header, data, size_of_data); break;
 
 		//received data is tm
 		case TM_MASK:	recv_TM(); break;
@@ -475,17 +484,25 @@ int UART_answer(uint8_t *header)
  * @return: Success or failure of the data callback
  *
  */
-int recv_TC(uint8_t *header, uint8_t *databytes)
+int recv_TC(uint8_t *header, uint8_t *databytes, int size_of_data)
 {
 	uint8_t id = header[ID_POS];
+	FILE *fptr;
 
 	switch(id)
 	{
 		case CAMERA_TC: break;
 		case UART_TC: 	puts("DONE!");
-						puts((char*) databytes);
-						//for(int i = 0; i < 28; i ++)
-							//printf("%c", databytes[i]);
+						//puts((char*) databytes);
+						/*for(int i = 0; i < size_of_data; i ++)
+							printf("%c", (char) databytes[i]);
+						printf("\n");*/
+
+						//fopen, fclose, Test to write on a document
+						/*if((fptr = fopen("/Users/valentinstadtlander/Desktop/doc/Test.pdf", "wb")) == NULL)
+							printf("Error opening File\n");
+						fwrite(databytes, size_of_data, 1, fptr);
+						fclose(fptr);*/
 						break;
 		case CPU_TC: break;
 		case BRAM_TC: break;

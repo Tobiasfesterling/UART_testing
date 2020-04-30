@@ -52,10 +52,10 @@ static void echo(SOCKET client_socket)
 static void echo(int client_socket)
 #endif
 {
-    char echo_buffer[RCVBUFSIZE];
+    uint8_t echo_buffer[RCVBUFSIZE];
     int recv_size;
     time_t zeit;
-
+printf("block!\n");
     if((recv_size =
             recv(client_socket, echo_buffer, RCVBUFSIZE,0)) < 0)
         error_exit("Fehler bei recv()");
@@ -80,14 +80,14 @@ static void error_exit(char *error_message) {
 
 int maiin( int argc, char *argv[]);
 
-int maiin( int argc, char *argv[]) {
+int main( int argc, char *argv[]) {
     struct sockaddr_in server, client;
 
 #ifdef _WIN32
     SOCKET sock, fd;
 #else
-    //int sock
-	int fd;
+    int Ssock;
+	//int fd;
 #endif
 
     unsigned int len;
@@ -104,8 +104,8 @@ int maiin( int argc, char *argv[]) {
 #endif
 
     /* Erzeuge das Socket. */
-    sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if (sock < 0)
+    Ssock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (Ssock < 0)
         error_exit("Fehler beim Anlegen eines Sockets");
 
     /* Erzeuge die Socketadresse des Servers. */
@@ -119,12 +119,12 @@ int maiin( int argc, char *argv[]) {
 
     /* Erzeuge die Bindung an die Serveradresse
      * (genauer: an einen bestimmten Port). */
-    if(bind(sock,(struct sockaddr*)&server, sizeof( server)) < 0)
+    if(bind(Ssock,(struct sockaddr*)&server, sizeof( server)) < 0)
         error_exit("Kann das Socket nicht \"binden\"");
 
     /* Teile dem Socket mit, dass Verbindungswünsche
      * von Clients entgegengenommen werden. */
-    if(listen(sock, 5) == -1 )
+    if(listen(Ssock, 5) == -1 )
          error_exit("Fehler bei listen");
 
     printf("Server bereit! - wartet auf Anfragen ...\n");
@@ -134,18 +134,27 @@ int maiin( int argc, char *argv[]) {
      * bis ein Client Verbindung aufnimmt. */
     for (;;) {
         len = sizeof(client);
-        fd = accept(sock, (struct sockaddr*)&client, &len);
-        if (fd < 0)
+        sock = accept(Ssock, (struct sockaddr*)&client, &len);
+        if (sock < 0)
             error_exit("Fehler bei accept");
         printf("Bearbeite den Client mit der Adresse: %s\n",
            inet_ntoa(client.sin_addr));
-        /* Daten vom Client auf dem Bildschirm ausgeben */
+        //*Daten vom Client auf dem Bildschirm ausgeben */
         //echo( fd );
 
-        int status;
+        int status = UART_Recv_Data();
+
+        if(status == XST_FAILURE)
+        	printf("%i\n", status);
+
+
+
+        /*int status;
         int try = 0;
-        while((status = UART_Recv_Data()) != 0 || try == 10)
+        while((status = UART_Recv_Data()) != 0 && try != 50)
         {
+        	printf("Status: %i, ", status);
+        	printf("Try: %i\n", try);
         	try++;
         }
 
@@ -153,7 +162,7 @@ int maiin( int argc, char *argv[]) {
 #ifdef _WIN32
         closesocket(fd);
 #else
-        close(fd);
+        close(sock);
 #endif
     }
     return EXIT_SUCCESS;
