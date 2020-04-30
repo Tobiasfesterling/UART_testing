@@ -123,22 +123,33 @@ int main( int argc, char *argv[]) {
                    " von Bytes versendet als erwartet !!!!");
      */
 
-uint8_t buf[56];
+
+//    uint8_t buf[] = "Text bezeichnet im nichtwissenschaftlichen Sprachgebrauch eine abgegrenzte, zusammenhangende, meist schriftliche sprachliche Ausserung, im weiteren Sinne auch nicht geschriebene, aber schreibbare Sprachinformation. Aus sprachwissenschaftlicher Sicht ist ein Text die sprachliche Form einer kommunikativen Handlung.";
+
+    uint8_t buf[] = "The GNU Compiler Collection includes front ends for C, C++, \n"
+    				"Objective-C, Fortran, Java, Ada, and Go, as well as libraries for these \n"
+    				"languages (libstdc++, libgcj,...). GCC was originally written as the compiler \n"
+    				"for the GNU operating system. The GNU system was developed to be 100% free \n"
+    				"software, free in the sense that it respects the user's freedom.\n"
+    				"Valentin Stadtlander!";
+    //uint8_t buf[] = "123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_123456789_";
+    int BUF_LENGTH = sizeof(buf)/sizeof(buf[0]);//(int) strlen((char*) buf);
+
 
 //for(int i = 0; i < 56; i++)
 //	buf[i] = '0' + i;
+
 
 puts("Start sending!!...");
 //if(send(sock, buf, 32, 0) < 0)
 //	printf("ERROR");
 
-for(int j = 0; j < 30; j++)
+//for(int j = 0; j < 30; j++)
 {
-	for(int i = 0; i < 56; i++)
-	{
-		buf[i] = '0' + i - j;
-	}
-	printf("exitvalue: %i\n", UART_Send_Data(UART_TC, buf, 56));
+
+	printf("exitvalue: %i\n", UART_Send_Data(UART_TC, buf, BUF_LENGTH));
+
+	printf("TextLength: %i\n", BUF_LENGTH);
 }
 
 

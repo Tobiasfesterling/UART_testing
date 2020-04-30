@@ -269,11 +269,13 @@ int send_request_to_send(uint8_t ID, uint8_t *temp32, uint8_t *lastCRC_send, uin
  */
 int package_count(int dataLength)
 {
+	int ret = 0;
+	printf("DataLength: %i ------- %i\n", dataLength, (ret = dataLength/PACKAGE_DATA_SIZE));
 
 	if (dataLength % PACKAGE_DATA_SIZE > 0)
 		return (dataLength / PACKAGE_DATA_SIZE + 1);
 	else
-		return (dataLength / PACKAGE_DATA_SIZE);
+		return ret; //(dataLength / PACKAGE_DATA_SIZE);
 }
 
 /*
@@ -309,7 +311,7 @@ void get_received_data(uint8_t *header, uint8_t *data, uint8_t *flags, uint8_t *
 int send_data(uint8_t ID, uint8_t *databytes, int dataLength, uint8_t *lastCRC_send, uint8_t *lastCRC_rcvd)
 {
 	uint8_t send_array[BUFFER_SIZE];
-	uint8_t packageCount = package_count(dataLength);
+	int packageCount = package_count(dataLength);
 	uint8_t header[HEADER_SIZE];
 	uint8_t data[PACKAGE_DATA_SIZE];
 	uint8_t flags;
@@ -318,7 +320,7 @@ int send_data(uint8_t ID, uint8_t *databytes, int dataLength, uint8_t *lastCRC_s
 	int crc = 0;
 	int status = XST_SUCCESS;
 
-	printf("fill packages\n");
+	printf("fill packages: %i\n", packageCount);
 	//fill array temp with the databytes and the header to send
 	fill_packages(ID, dataLength, databytes, temp, packageCount);
 
@@ -500,16 +502,19 @@ int wait_on_answer(uint8_t *send_array, uint8_t ID, uint8_t *lastCRC_send)
  */
 void fill_packages(uint8_t ID, int dataLength, uint8_t *databytes, uint8_t *temp, int packageCount)
 {
+
 	/*Temporary arrays for header and data*/
 	//uint8_t header[4];
 
-	printf("Fill packages!!\n");
+	printf("Fill %i packages with: ", packageCount);
+	puts((char*) databytes);
 	uint8_t header[HEADER_SIZE] = {ID, INIT_CRC, 0, UNSET_ALL_FLAGS};
 
 	//uint8_t flags = UNSET_ALL_FLAGS;
 
 	for (int i = 0; i < packageCount; i++)
 	{
+
 		/*first package*/
 		if(i == 0)
 		{
@@ -536,17 +541,20 @@ void fill_packages(uint8_t ID, int dataLength, uint8_t *databytes, uint8_t *temp
 				temp[k] = header[k];
 			}
 
+			printf("Chars in this package: ");
 			for (int j = HEADER_SIZE; j < BUFFER_SIZE; j++)
 			{
 				/*fill temporary arrays temp*/
 				temp[j] = databytes[j - HEADER_SIZE];
+				printf("%c", temp[j]);
 			}
+			printf("\n");
 		}
 
 		/*all packages except the first and the last one*/
 		else if (i > 0 && i != packageCount - 1)
 		{
-			printf("fill header %i. pkg\n", i);
+			printf("fill header %i. pkg\n", (i+1));
 
 			//Fill header[DATA_SIZE_POS]
 			header[DATA_SIZE_POS] = PACKAGE_DATA_SIZE;
@@ -565,11 +573,14 @@ void fill_packages(uint8_t ID, int dataLength, uint8_t *databytes, uint8_t *temp
 				temp[i * BUFFER_SIZE + k] = header[k];
 			}
 
+			printf("Chars in this package: ");
 			/*fill temporary arrays temp and temp28*/
 			for (int j = HEADER_SIZE; j < BUFFER_SIZE; j++)
 			{
 				temp[i * BUFFER_SIZE + j] = databytes[i * PACKAGE_DATA_SIZE + j - HEADER_SIZE];
+				printf("%c", temp[i*BUFFER_SIZE + j]);
 			}
+			printf("\n");
 		}
 
 		/*last package*/
@@ -577,7 +588,7 @@ void fill_packages(uint8_t ID, int dataLength, uint8_t *databytes, uint8_t *temp
 		{
 			int restsize = dataLength - PACKAGE_DATA_SIZE * (packageCount - 1);
 
-			printf("fill header last pkg\n");
+			printf("fill header last pkg, restsize: %i\n", restsize);
 
 			//Fill header[DATA_SIZE_POS]
 			header[DATA_SIZE_POS] = restsize;
@@ -593,13 +604,15 @@ void fill_packages(uint8_t ID, int dataLength, uint8_t *databytes, uint8_t *temp
 			}
 
 
+			printf("chars in this package: ");
 			for(int j = HEADER_SIZE; j < BUFFER_SIZE; j++)
 			{
 				/*fill temp and temp28*/
-				if(j < restsize)
+				if(j - HEADER_SIZE < restsize)
 				{
 					/*fill with the rest databytes from position 0 to restsize*/
 					temp[i * BUFFER_SIZE + j] = databytes[i * PACKAGE_DATA_SIZE + j - HEADER_SIZE];
+					printf("%c", temp[i*BUFFER_SIZE + j]);
 				}
 				else
 				{
@@ -607,9 +620,12 @@ void fill_packages(uint8_t ID, int dataLength, uint8_t *databytes, uint8_t *temp
 					temp[i * BUFFER_SIZE + j] = 0;
 				}
 			}
+			printf("\n");
 
 
 		}
+
+		printf("Package no. %i: data size %i\n", i,header[DATA_SIZE_POS]);
 	}
 
 }
