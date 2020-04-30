@@ -290,7 +290,7 @@ int UART_answer(uint8_t *header);
  * @return: Success or failure of the data callback
  *
  */
-int recv_TC(uint8_t *header, uint8_t *databytes);
+int recv_TC(uint8_t *header, uint8_t *databytes, int size_of_data);
 
 /*
  * This method is used to store the received TM.
