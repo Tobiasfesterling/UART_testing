@@ -165,6 +165,13 @@ int connect_(uint8_t ID, uint8_t *databytes, uint8_t dataLength, uint8_t *lastCR
 		printf("get ack flag\n");
 		if(get_ACK_flag(rcv_flags) == SET)
 		{
+
+			//Check If the error is caused by an unknown ID
+			if(get_ID_Unknown_Flag(rcv_flags) == SET)
+			{
+				//Wrong ID, return failure
+				return XST_FAILURE;
+			}
 				//check ready to receive
 			printf("get ready to rcv flag\n");
 			if(get_ready_to_recv_flag(rcv_flags) == SET)
@@ -181,12 +188,8 @@ int connect_(uint8_t ID, uint8_t *databytes, uint8_t dataLength, uint8_t *lastCR
 		}
 		else
 		{
-			//Check If the error is caused by an unknown ID
-			if(get_ID_Unknown_Flag(rcv_flags) == SET)
-			{
-				//Wrong ID, return failure
-				return XST_FAILURE;
-			}
+			//NOT ACK-Flag
+			conn_counter++;
 		}
 	}
 
