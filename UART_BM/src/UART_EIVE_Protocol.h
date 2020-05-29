@@ -252,14 +252,25 @@ int receive_data(uint8_t *crc_rcv, uint8_t *crc_send, uint8_t rcvd_id, uint8_t l
 int extract_header(const uint8_t *rcvBuffer, uint8_t *header, uint8_t *data);
 
 /*
+ * Checks if the id of the incoming packet is known or unknown
+ *
+ * @param: ID: 	The ID of the incoming packet
+ *
+ * @return:		1 -> if it's known
+ * 				0 -> if it's unknown
+ */
+int check_ID(uint8_t ID);
+
+/*
  * Sends an answer without set the ACK flag
  *
- * @param: *last_crc: the address of the last sent CRC-value
- * 		   *old_id:	  the address of the id of the received package
+ * @param: *last_crc: 	the address of the last sent CRC-value
+ * 		   *old_id:	  	the address of the id of the received package
+ * 		   id_unknown:	Set (1) if the error was caused by an unknown ID, else not set (0)
  *
  * @return: The success or failure of sending the answer
  */
-int send_failure(uint8_t *last_crc, uint8_t old_id, uint8_t *calc_crc);
+int send_failure(uint8_t *last_crc, uint8_t old_id, uint8_t *calc_crc, int id_unknown);
 
 /*
  * Sends an answer with set ACK flag and the wanted flags

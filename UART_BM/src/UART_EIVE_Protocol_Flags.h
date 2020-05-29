@@ -86,6 +86,14 @@
  */
 #define END_MASK            	0b00001000
 
+/*
+ *
+ * Mask for the "ID unknown" bit
+ *
+ *
+ */
+#define IDU_MASK				0b00000100
+
 /******************** Masks for the flags (decimal) ********************/
 
 /*
@@ -189,6 +197,15 @@ void set_Start_Flag(uint8_t *flags, uint8_t start);
 void set_End_Flag(uint8_t *flags, uint8_t end);
 
 /*
+ * Setter method for the id unknown flag
+ *
+ * @param: *flags: 	The pointer of the flag byte from the header
+ * 		   idu:		Set (1) or Unset (0) the flag bit
+ *
+ */
+void set_ID_Unknown_Flag(uint8_t *flags, uint8_t idu);
+
+/*
  * Getter Method for ACK-Flag
  *
  * @param: *flags: The pointer of the flag byte from the header
@@ -233,6 +250,9 @@ int get_start_flag(uint8_t flags);
  * @return: SET (1) if the bit is set else NOT_SET (0)
  */
 int get_end_flag(uint8_t flags);
+
+
+int get_ID_Unknown_Flag(uint8_t flags);
 
 
 #endif /* SRC_UART_EIVE_PROTOCOL_FLAGS_H_ */

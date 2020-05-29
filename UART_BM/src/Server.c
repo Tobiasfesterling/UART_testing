@@ -80,7 +80,7 @@ static void error_exit(char *error_message) {
 
 int maiin( int argc, char *argv[]);
 
-int main( int argc, char *argv[]) {
+int maiin( int argc, char *argv[]) {
     struct sockaddr_in server, client;
 
 #ifdef _WIN32
@@ -142,21 +142,22 @@ int main( int argc, char *argv[]) {
         //*Daten vom Client auf dem Bildschirm ausgeben */
         //echo( fd );
 
+
+        //--------------------------------------------------------------------
+        //--------------------------------------------------------------------
+        //--------------------------------------------------------------------
+
+
+
+        /**
+         * UART Receiving in blocking mode
+         */
         int status = UART_Recv_Data();
+
 
         if(status == XST_FAILURE)
         	printf("%i\n", status);
 
-
-
-        /*int status;
-        int try = 0;
-        while((status = UART_Recv_Data()) != 0 && try != 50)
-        {
-        	printf("Status: %i, ", status);
-        	printf("Try: %i\n", try);
-        	try++;
-        }
 
         /* Schließe die Verbindung. */
 #ifdef _WIN32

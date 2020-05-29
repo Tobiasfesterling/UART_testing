@@ -125,7 +125,7 @@ int connection_establishment(uint8_t *last_crc_rcv, uint8_t *last_crc_send, uint
 	if(check_crc(header[CRC_POS], RecvBuffer, INIT_CRC) != XST_SUCCESS)
 	{
 		//Send answer without set ACK flag
-		send_failure(last_crc_send, header[ID_POS], calc_crc);
+		send_failure(last_crc_send, header[ID_POS], calc_crc, NOT_SET);
 		printf("crc NACK, failure\n");
 
 		return XST_FAILURE;
@@ -135,11 +135,24 @@ int connection_establishment(uint8_t *last_crc_rcv, uint8_t *last_crc_send, uint
 	//set acknowledge flag
 	set_ACK_Flag(new_flags, ACK);
 
-	/* check request 2 send */
-	if(get_Req_to_send_flag(header[FLAGS_POS]) == 0)
+	//check idu flag
+	if(check_ID(header[ID_POS]) == 0)
 	{
 		//Send answer without set ACK flag
-		send_failure(last_crc_send, header[ID_POS], calc_crc);
+		send_failure(last_crc_send, header[ID_POS], calc_crc, SET);
+		printf("id not known, failure\n");
+
+		return XST_FAILURE;
+
+	}
+
+	printf("ID check successful");
+
+	/* check request 2 send */
+	if(get_Req_to_send_flag(header[FLAGS_POS]) == NOT_SET)
+	{
+		//Send answer without set ACK flag
+		send_failure(last_crc_send, header[ID_POS], calc_crc, NOT_SET);
 		printf("req 2 send flag not received, failure\n");
 
 		return XST_FAILURE;
@@ -237,7 +250,7 @@ int receive_data(uint8_t *crc_rcv, uint8_t *crc_send, uint8_t rcvd_id, uint8_t l
 				{
 					printf("failure receving data\n");
 					//success == 0 -> send failure
-					send_failure(&last_crc_send, next_header[ID_POS], calc_crc);
+					send_failure(&last_crc_send, next_header[ID_POS], calc_crc, NOT_SET);
 				}
 
 			}
@@ -390,19 +403,45 @@ int extract_header(const uint8_t *rcvBuffer, uint8_t *header, uint8_t *data)
 }
 
 /*
+ * Checks if the id of the incoming packet is known or unknown
+ *
+ * @param: ID: 	The ID of the incoming packet
+ *
+ * @return:		1 -> if it's known
+ * 				0 -> if it's unknown
+ */
+int check_ID(uint8_t ID)
+{
+	switch(ID)
+	{
+		case CAMERA_TC: 	return 1;
+		case UART_TC: 		return 1;
+		case CPU_TC: 		return 1;
+		case BRAM_TC: 		return 1;
+		case DOWNLINK_TC: 	return 1;
+		case DAC_TC: 		return 1;
+		default: 			return 0;
+	}
+}
+
+/*
  * Sends an answer without set the ACK flag
  *
  * @param: *last_crc: the address of the last sent CRC-value
  * 		   *old_id:	  the address of the id of the received package
+ * 		   id_unknown:	Set (1) if the error was caused by an unknown ID, else not set (0)
  *
  * @return: The success or failure of sending the answer
  */
-int send_failure(uint8_t *last_crc, uint8_t old_id, uint8_t *calc_crc)
+int send_failure(uint8_t *last_crc, uint8_t old_id, uint8_t *calc_crc, int id_unknown)
 {
 	printf("sending failure...\n");
 	//all flags are set to zero
 	uint8_t failure_flags = UNSET_ALL_FLAGS;
 	printf("unset all flags\n");
+
+	if(id_unknown == SET)
+		set_ID_Unknown_Flag(&failure_flags, SET);
 
 	//header array
 	uint8_t header[HEADER_SIZE];
@@ -492,8 +531,10 @@ int recv_TC(uint8_t *header, uint8_t *databytes, int size_of_data)
 	switch(id)
 	{
 		case CAMERA_TC: break;
-		case UART_TC: 	puts("DONE!");
-						//puts((char*) databytes);
+		case UART_TC: 	puts("--------------------------------------------------------------------------------");
+						puts("--------------------------------------------------------------------------------");
+						puts("Receiving done!");
+						puts((char*) databytes);
 						/*for(int i = 0; i < size_of_data; i ++)
 							printf("%c", (char) databytes[i]);
 						printf("\n");*/

@@ -143,7 +143,7 @@ int connect_(uint8_t ID, uint8_t *databytes, uint8_t dataLength, uint8_t *lastCR
 			if(check_crc(submittedCRC, RecvBuffer, *lastCRC_rcvd)!= XST_SUCCESS)
 			{
 				//CRC values defeer, send failure
-				send_failure(lastCRC_send, ID, lastCRC_send);
+				send_failure(lastCRC_send, ID, lastCRC_send, NOT_SET);
 
 			}
 			else
@@ -165,27 +165,34 @@ int connect_(uint8_t ID, uint8_t *databytes, uint8_t dataLength, uint8_t *lastCR
 		printf("get ack flag\n");
 		if(get_ACK_flag(rcv_flags) == SET)
 		{
-
 				//check ready to receive
 			printf("get ready to rcv flag\n");
-				if(get_ready_to_recv_flag(rcv_flags) == SET)
-				{
-					//send_data();
-					connection = ACK;
-					*lastCRC_rcvd = submittedCRC; //Test
-				}
-				else
-				{
-					//NOT ready to receive
-					conn_counter++;
-				}
+			if(get_ready_to_recv_flag(rcv_flags) == SET)
+			{
+				//send_data();
+				connection = ACK;
+				*lastCRC_rcvd = submittedCRC; //Test
+			}
+			else
+			{
+				//NOT ready to receive
+				conn_counter++;
 			}
 		}
+		else
+		{
+			//Check If the error is caused by an unknown ID
+			if(get_ID_Unknown_Flag(rcv_flags) == SET)
+			{
+				//Wrong ID, return failure
+				return XST_FAILURE;
+			}
+		}
+	}
 
 	printf("return at connect: conn_counter:%i\n", conn_counter);
 	if(conn_counter == 10)
 		return XST_FAILURE;
-
 
 	return XST_SUCCESS;
 }
@@ -317,7 +324,7 @@ int send_data(uint8_t ID, uint8_t *databytes, int dataLength, uint8_t *lastCRC_s
 	uint8_t flags;
 	uint8_t submittedCRC;
 	uint8_t temp[BUFFER_SIZE * packageCount];
-	int crc = 0;
+	uint8_t crc = 0;
 	int status = XST_SUCCESS;
 
 	printf("fill packages: %i\n", packageCount);
@@ -385,7 +392,7 @@ int send_data(uint8_t ID, uint8_t *databytes, int dataLength, uint8_t *lastCRC_s
 			//check received CRC
 			if(check_crc(submittedCRC, RecvBuffer, *lastCRC_rcvd)!= XST_SUCCESS)
 			{
-				send_failure(lastCRC_send, ID, &crc);
+				send_failure(lastCRC_send, ID, &crc, NOT_SET);
 				succes = 0;
 			}
 			else
